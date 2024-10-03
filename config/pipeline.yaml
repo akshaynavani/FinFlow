@@ -1,0 +1,32 @@
+# FinFlow pipeline configuration.
+# Any scalar here can be overridden with FINFLOW_<KEY> environment variables.
+
+warehouse_path: data/warehouse.db
+data_dir: data/raw
+checks_path: config/checks.yaml
+log_level: INFO
+fail_on_error: true
+
+sources:
+  - name: prices
+    path: prices.csv
+    format: csv
+    parse_dates: [date]
+  - name: fundamentals
+    path: fundamentals.csv
+    format: csv
+    parse_dates: [period_end, report_date]
+  - name: securities
+    path: securities.json
+    format: json
+  - name: corporate_actions
+    path: corporate_actions.csv
+    format: csv
+    parse_dates: [ex_date]
+
+features:
+  return_windows: [1, 5, 21]
+  volatility_windows: [21, 63]
+  moving_average_windows: [20, 50]
+  momentum_lookback: 126
+  momentum_skip: 21
