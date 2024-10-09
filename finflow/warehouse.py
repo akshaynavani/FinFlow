@@ -32,7 +32,8 @@ class Warehouse:
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.path)
         self.conn.execute("PRAGMA foreign_keys = ON")
-        self.conn.execute("PRAGMA journal_mode = WAL") if self.path != ":memory:" else None
+        if self.path != ":memory:":
+            self.conn.execute("PRAGMA journal_mode = WAL")
 
     # -- lifecycle -------------------------------------------------------
     def close(self) -> None:
