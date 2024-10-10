@@ -1,0 +1,129 @@
+# Data quality suites. Severity "error" blocks the pipeline (when
+# fail_on_error is true); "warn" is logged and recorded in dq_results only.
+#
+# raw     -> runs right after load, against landed raw tables
+# staging -> runs after SQL models, against stg_* and mart_* tables
+# features-> runs after feature engineering
+
+suites:
+  raw:
+    - table: raw_prices
+      checks:
+        - type: row_count
+          min: 1
+        - type: not_null
+          columns: [ticker, date]
+        - type: not_null
+          name: volume_present
+          columns: [volume]
+          severity: warn
+        - type: range
+          column: close
+          min: 0
+          inclusive: false
+          name: close_positive
+          severity: warn
+        - type: unique
+          columns: [ticker, date]
+          severity: warn
+    - table: raw_fundamentals
+      checks:
+        - type: not_null
+          columns: [ticker, period_end, report_date]
+        - type: expression
+          name: report_after_period_end
+          condition: "report_date >= period_end"
+    - table: raw_securities
+      checks:
+        - type: unique
+          columns: [ticker]
+        - type: not_null
+          columns: [ticker, sector]
+    - table: raw_corporate_actions
+      checks:
+        - type: accepted_values
+          column: action_type
+          values: [split, dividend]
+        - type: expression
+          name: split_has_ratio
+          condition: "action_type <> 'split' OR ratio > 0"
+
+  staging:
+    - table: stg_prices
+      checks:
+        - type: unique
+          columns: [ticker, trade_date]
+        - type: not_null
+          columns: [ticker, trade_date, open, high, low, close]
+        - type: expression
+          name: ohlc_consistent
+          condition: "low <= MIN(open, close) + 1e-9 AND high >= MAX(open, close) - 1e-9"
+        - type: relationships
+          column: ticker
+          to_table: stg_securities
+          to_column: ticker
+        - type: freshness
+          column: trade_date
+          max_age_days: 7
+          severity: warn
+    - table: stg_prices_rejected
+      checks:
+        - type: row_count
+          name: rejected_rows_small
+          min: 0
+          max: 50
+          severity: warn
+    - table: mart_daily_prices
+      checks:
+        - type: range
+          column: adj_close
+          min: 0
+          inclusive: false
+        - type: range
+          column: split_factor
+          min: 1
+        - type: custom_sql
+          name: no_rows_lost_vs_staging
+          sql: "SELECT ABS((SELECT COUNT(*) FROM {table}) - (SELECT COUNT(*) FROM stg_prices))"
+        - type: custom_sql
+          name: no_unadjusted_split_jumps
+          severity: warn
+          sql: >
+            SELECT COUNT(*) FROM (
+              SELECT adj_close / LAG(adj_close) OVER (PARTITION BY ticker ORDER BY trade_date) AS r
+              FROM {table}
+            ) WHERE r < 0.6 OR r > 1.67
+    - table: mart_fundamentals
+      checks:
+        - type: unique
+          columns: [ticker, period_end]
+        - type: range
+          column: debt_to_equity
+          min: 0
+          max: 20
+          severity: warn
+
+  features:
+    - table: feat_daily_features
+      checks:
+        - type: unique
+          columns: [ticker, trade_date]
+        - type: custom_sql
+          name: row_count_matches_mart
+          sql: "SELECT ABS((SELECT COUNT(*) FROM {table}) - (SELECT COUNT(*) FROM mart_daily_prices))"
+        - type: null_ratio
+          column: ret_1d
+          max_ratio: 0.05
+        - type: range
+          column: vol_21d
+          min: 0
+          max: 5
+        - type: zscore_outliers
+          column: log_ret_1d
+          group_by: ticker
+          threshold: 8
+          severity: warn
+        - type: range
+          column: mom_126_21_xs_rank
+          min: 0
+          max: 1
