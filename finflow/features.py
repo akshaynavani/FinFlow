@@ -87,7 +87,7 @@ def add_fundamental_features(df: pd.DataFrame, fundamentals: pd.DataFrame) -> pd
         return df
     fund = fundamentals.copy()
     fund["report_date"] = pd.to_datetime(fund["report_date"])
-    fund = fund.sort_values("report_date")
+    fund = fund.dropna(subset=["report_date"]).sort_values("report_date")
     cols = [
         "ticker", "report_date", "net_income_ttm", "revenue_ttm", "total_equity",
         "shares_outstanding", "net_margin", "debt_to_equity", "roe_ttm", "revenue_growth_yoy",
@@ -119,7 +119,9 @@ def add_cross_sectional_ranks(df: pd.DataFrame, columns: list[str]) -> pd.DataFr
     return df
 
 
-def build_features(prices: pd.DataFrame, fundamentals: pd.DataFrame, cfg: FeatureConfig) -> pd.DataFrame:
+def build_features(
+    prices: pd.DataFrame, fundamentals: pd.DataFrame, cfg: FeatureConfig
+) -> pd.DataFrame:
     if prices.empty:
         return prices
     df = prices.copy()
@@ -128,7 +130,9 @@ def build_features(prices: pd.DataFrame, fundamentals: pd.DataFrame, cfg: Featur
 
     df = add_return_features(df, cfg.return_windows)
     df = add_volatility_features(df, cfg.volatility_windows)
-    df = add_trend_features(df, cfg.moving_average_windows, cfg.momentum_lookback, cfg.momentum_skip)
+    df = add_trend_features(
+        df, cfg.moving_average_windows, cfg.momentum_lookback, cfg.momentum_skip
+    )
     df = add_liquidity_features(df)
     df = add_fundamental_features(df, fundamentals)
     df = add_cross_sectional_ranks(
@@ -155,7 +159,8 @@ def run_feature_engineering(wh: Warehouse, cfg: FeatureConfig) -> int:
     features = build_features(prices, fundamentals, cfg)
     rows = wh.write_df(features, FEATURE_TABLE, if_exists="replace")
     wh.execute(
-        f"CREATE UNIQUE INDEX IF NOT EXISTS ux_{FEATURE_TABLE} ON {FEATURE_TABLE} (ticker, trade_date)"
+        f"CREATE UNIQUE INDEX IF NOT EXISTS ux_{FEATURE_TABLE} "
+        f"ON {FEATURE_TABLE} (ticker, trade_date)"
     )
     logger.info(
         "features_built",
