@@ -8,6 +8,7 @@ import sys
 
 from finflow import __version__
 from finflow.config import load_config
+from finflow.extract import ExtractError
 from finflow.logging_utils import configure_logging, new_run_id, run_context
 from finflow.pipeline import Pipeline
 from finflow.quality import DataQualityError
@@ -92,8 +93,8 @@ def main(argv: list[str] | None = None) -> int:
     except DataQualityError as exc:
         print(f"Data quality failure: {exc}", file=sys.stderr)
         return 2
-    except FileNotFoundError as exc:
-        print(f"Missing file: {exc}", file=sys.stderr)
+    except (ExtractError, FileNotFoundError) as exc:
+        print(f"Extract failed: {exc}", file=sys.stderr)
         return 1
     finally:
         pipeline.close()
