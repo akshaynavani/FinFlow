@@ -9,7 +9,7 @@ description = "Python ELT research pipeline for structured financial datasets"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "pandas>=2.0",
+    "pandas>=2.2",
     "numpy>=1.24",
     "PyYAML>=6.0",
 ]
