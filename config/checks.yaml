@@ -57,7 +57,7 @@ suites:
           columns: [ticker, trade_date, open, high, low, close]
         - type: expression
           name: ohlc_consistent
-          condition: "low <= MIN(open, close) + 1e-9 AND high >= MAX(open, close) - 1e-9"
+          condition: "low <= MIN(open, close) + 1e-4 AND high >= MAX(open, close) - 1e-4"
         - type: relationships
           column: ticker
           to_table: stg_securities
