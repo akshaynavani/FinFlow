@@ -160,9 +160,11 @@ def run_suite(
         for spec in table_block.get("checks", []):
             result = run_check(wh, suite, table, spec)
             level = "info" if result.passed else ("error" if result.severity == "error" else "warning")
-            getattr(logger, level)(
-                "dq_check", extra={k: v for k, v in asdict(result).items() if k != "suite"}
-            )
+            # "name" is a reserved LogRecord attribute, so log it as "check".
+            fields = asdict(result)
+            fields["check"] = fields.pop("name")
+            fields.pop("suite")
+            getattr(logger, level)("dq_check", extra=fields)
             results.append(result)
 
     persist_results(wh, results, run_id)
