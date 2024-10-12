@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from finflow.extract import extract_all
 from finflow.load import load_all
@@ -52,8 +53,8 @@ def test_split_adjustment_removes_price_gaps(pipeline, dataset):
         adj_jump = series.adj_close[idx] / series.adj_close[idx - 1]
         assert raw_jump < 0.6  # visible split gap in raw data
         assert 0.8 < adj_jump < 1.25  # gap removed after adjustment
-        assert series.split_factor[idx - 1] == split.ratio
-        assert series.split_factor[idx] == 1.0
+        assert series.split_factor[idx - 1] == pytest.approx(split.ratio)
+        assert series.split_factor[idx] == pytest.approx(1.0)
 
 
 def test_mart_fundamentals_ttm(pipeline, dataset):
